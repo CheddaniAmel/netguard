@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>NETGUARD — Détail Scan #{{ scan.id }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; }
+        header { background: #161b22; border-bottom: 1px solid #30363d; padding: 16px 32px; display: flex; align-items: center; gap: 12px; }
+        header h1 { font-size: 1.4rem; color: #58a6ff; letter-spacing: 2px; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 32px; }
+        .back { color: #58a6ff; text-decoration: none; font-size: 0.9rem; display: inline-block; margin-bottom: 24px; }
+        h2 { color: #8b949e; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+
+        .host-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+        .host-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .host-ip { font-size: 1.1rem; font-weight: bold; color: #e6edf3; }
+        .host-name { color: #8b949e; font-size: 0.85rem; }
+
+        .badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
+        .CRITIQUE { background: #3d1a1a; color: #f85149; }
+        .ELEVE    { background: #3a2000; color: #f0883e; }
+        .MOYEN    { background: #3a2a0a; color: #e3b341; }
+        .FAIBLE   { background: #1a2a3a; color: #58a6ff; }
+        .OK       { background: #1a3a1a; color: #3fb950; }
+
+        .ports { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .port-tag {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            background: #21262d;
+            border: 1px solid #30363d;
+        }
+        .port-tag.dangerous { background: #3d1a1a; border-color: #f85149; color: #f85149; }
+        .port-tag .port-num { font-weight: bold; }
+
+        .danger-detail { color: #8b949e; font-size: 0.8rem; margin-top: 4px; }
+        .report-btn {
+            display: inline-block;
+            margin-top: 24px;
+            background: #1f6feb;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🛡 NETGUARD</h1>
+    </header>
+    <div class="container">
+        <a href="/" class="back">← Retour au dashboard</a>
+
+        <h2>Scan #{{ scan.id }} — {{ scan.network }} — {{ scan.scan_date[:19] }}</h2>
+
+        {% for host in scan.hosts %}
+        <div class="host-card">
+            <div class="host-header">
+                <div>
+                    <div class="host-ip">{{ host.ip }}</div>
+                    <div class="host-name">{{ host.hostname }}</div>
+                </div>
+                <span class="badge {{ host.risk_level }}">{{ host.risk_level }}</span>
+            </div>
+
+            {% if host.ports %}
+            <div class="ports">
+                {% for port in host.ports %}
+                <div class="port-tag {% if port.dangerous %}dangerous{% endif %}">
+                    <span class="port-num">{{ port.port }}</span> {{ port.service }}
+                    {% if port.dangerous %}<div class="danger-detail">⚠ {{ port.danger_reason }}</div>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="color:#8b949e;font-size:0.85rem;margin-top:8px">Aucun port ouvert détecté</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <a href="/report/{{ scan.id }}" class="report-btn">📄 Générer le rapport ITIL</a>
+    </div>
+</body>
+</html>

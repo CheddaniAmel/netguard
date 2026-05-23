@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NETGUARD — Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #e6edf3; min-height: 100vh; }
+
+        header {
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        header h1 { font-size: 1.4rem; color: #58a6ff; letter-spacing: 2px; }
+        header span { color: #8b949e; font-size: 0.85rem; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 32px; }
+
+        /* Stats cards */
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+        .card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .card .label { color: #8b949e; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .card .value { font-size: 2rem; font-weight: bold; color: #58a6ff; }
+        .card.danger .value { color: #f85149; }
+        .card.warn .value { color: #e3b341; }
+
+        /* Scan form */
+        .scan-form {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 32px;
+        }
+        .scan-form h2 { margin-bottom: 16px; color: #58a6ff; font-size: 1rem; }
+        .scan-form form { display: flex; gap: 12px; align-items: center; }
+        .scan-form input {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 10px 16px;
+            color: #e6edf3;
+            font-size: 0.95rem;
+            flex: 1;
+        }
+        .scan-form button {
+            background: #238636;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 24px;
+            color: white;
+            font-size: 0.95rem;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .scan-form button:hover { background: #2ea043; }
+
+        /* Status bar */
+        #status-bar {
+            background: #1c2128;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 10px 16px;
+            margin-bottom: 24px;
+            font-size: 0.85rem;
+            color: #8b949e;
+            display: none;
+        }
+        #status-bar.active { display: block; color: #e3b341; }
+
+        /* Scans table */
+        .scans-section h2 { margin-bottom: 16px; font-size: 1rem; color: #8b949e; }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            background: #161b22;
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 0.8rem;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #30363d;
+        }
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #21262d;
+            font-size: 0.9rem;
+        }
+        tr:hover td { background: #161b22; }
+        a { color: #58a6ff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* Risk badges */
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .badge-critique { background: #3d1a1a; color: #f85149; }
+        .badge-ok       { background: #1a3a1a; color: #3fb950; }
+        .badge-warn     { background: #3a2a0a; color: #e3b341; }
+
+        .empty { color: #8b949e; text-align: center; padding: 32px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🛡 NETGUARD</h1>
+        <span>Plateforme d'audit sécurité réseau</span>
+    </header>
+
+    <div class="container">
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="card">
+                <div class="label">Scans effectués</div>
+                <div class="value">{{ stats.total_scans }}</div>
+            </div>
+            <div class="card">
+                <div class="label">Hôtes découverts</div>
+                <div class="value">{{ stats.total_hosts }}</div>
+            </div>
+            <div class="card danger">
+                <div class="label">Ports dangereux</div>
+                <div class="value">{{ stats.total_dangers }}</div>
+            </div>
+            <div class="card warn">
+                <div class="label">Hôtes critiques</div>
+                <div class="value">{{ stats.risks.get('CRITIQUE', 0) }}</div>
+            </div>
+        </div>
+
+        <!-- Scan form -->
+        <div class="scan-form">
+            <h2>🔍 LANCER UN NOUVEAU SCAN</h2>
+            <form method="POST" action="/scan" onsubmit="startStatus()">
+                <input type="text" name="network" value="192.168.1.0/24"
+                       placeholder="Ex: 192.168.1.0/24">
+                <button type="submit">▶ Scanner</button>
+            </form>
+        </div>
+
+        <!-- Status bar -->
+        <div id="status-bar">⏳ Scan en cours...</div>
+
+        <!-- Scans list -->
+        <div class="scans-section">
+            <h2>HISTORIQUE DES SCANS</h2>
+            {% if scans %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Réseau</th>
+                        <th>Date</th>
+                        <th>Hôtes</th>
+                        <th>Risques</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for scan in scans %}
+                <tr>
+                    <td>#{{ scan.id }}</td>
+                    <td><code>{{ scan.network }}</code></td>
+                    <td>{{ scan.scan_date[:19] }}</td>
+                    <td>{{ scan.total_hosts }}</td>
+                    <td>
+                        {% if scan.total_risks > 0 %}
+                            <span class="badge badge-critique">⚠ {{ scan.total_risks }} à risque</span>
+                        {% else %}
+                            <span class="badge badge-ok">✓ Aucun</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="/scan/{{ scan.id }}">Détails</a> &nbsp;|&nbsp;
+                        <a href="/report/{{ scan.id }}">Rapport</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty">Aucun scan effectué. Lancez votre premier scan ci-dessus.</div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <script>
+        function startStatus() {
+            const bar = document.getElementById('status-bar');
+            bar.classList.add('active');
+            const check = setInterval(() => {
+                fetch('/status').then(r => r.json()).then(data => {
+                    bar.textContent = '⏳ ' + data.message;
+                    if (!data.running) {
+                        clearInterval(check);
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                });
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
