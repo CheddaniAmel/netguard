@@ -201,19 +201,26 @@
     </div>
 
     <script>
-        function startStatus() {
-            const bar = document.getElementById('status-bar');
-            bar.classList.add('active');
-            const check = setInterval(() => {
-                fetch('/status').then(r => r.json()).then(data => {
+    function startStatus() {
+        const bar = document.getElementById('status-bar');
+        bar.classList.add('active');
+        bar.textContent = '⏳ Scan en cours... (rafraîchis la page dans 30 secondes)';
+        
+        // Vérifie toutes les 3 secondes
+        const check = setInterval(() => {
+            fetch('/status')
+                .then(r => r.json())
+                .then(data => {
                     bar.textContent = '⏳ ' + data.message;
-                    if (!data.running) {
+                    if (!data.running && data.message !== '') {
                         clearInterval(check);
-                        setTimeout(() => location.reload(), 1000);
+                        bar.textContent = '✅ ' + data.message + ' — Rechargement...';
+                        setTimeout(() => location.reload(), 2000);
                     }
-                });
-            }, 2000);
-        }
-    </script>
+                })
+                .catch(() => clearInterval(check));
+        }, 3000);
+    }
+</script>
 </body>
 </html>
